@@ -1,3 +1,0 @@
-\\[^,]*
-
-This regex is used to deal with the issues in NBA documents from basketball-reference.com
