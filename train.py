@@ -17,12 +17,12 @@ def train():
     features, labels = load_data()
     num_samples = len(labels)
     classifier = svm.SVC(kernel='linear')
-    print "Training started"
+    print("Training started")
     start = timer()
     # Train on the first 90% of the data
     classifier.fit(features[:9*(num_samples // 10)], labels[:9*(num_samples // 10)])
     end = timer()
-    print "Training ended, took " + str(end-start) + " seconds"
+    print("Training ended, took " + str(end-start) + " seconds")
 
     # Now predict the last 10%:
     expected = labels[9*(num_samples // 10):]

@@ -3,7 +3,7 @@ import random
 
 def get_player_data(fileName):
     data = []
-    with open(fileName, 'rb') as f:
+    with open(fileName, 'rt') as f:
         reader = csv.reader(f)
         vals = []
         isFirst = True
@@ -57,7 +57,7 @@ def get_cleaned_data(data_file, asg_file):
     data = get_player_data(data_file)
     data = clean_data(data)
     append_allStar_data(asg_file, data)
-    print "Import done"
+    print("Import done")
     return data
 
 def get_data(data_files):
