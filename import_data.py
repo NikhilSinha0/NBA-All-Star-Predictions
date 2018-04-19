@@ -23,7 +23,7 @@ def get_player_data(fileName):
                             val = float(val)
                         except ValueError:
                             val = str(val)
-                    if(vals[i]=='Rk'):
+                    if(vals[i]=='Rk'): #Skip field with no real information
                         continue
                     item[vals[i]] = val
                 data.append(item)
@@ -33,7 +33,7 @@ def clean_data(data):
     indices_to_delete = []
     for i in range(1, len(data)):
         if(data[i]['Player'] == data[i-1]['Player']):
-            indices_to_delete.append(i)
+            indices_to_delete.append(i) #Delete repeat entries and keep only totals
         
     data = [data[e] for e in range(len(data)) if e not in indices_to_delete]
     return data
@@ -44,14 +44,14 @@ def append_allStar_data(fileName, data):
     names = contents.split("\n")
     for item in data:
         item['ASG'] = (item['Player'] in names)
-        del item['Player']
+        del item['Player'] #No longer need player names, do not want to learn from name
 
 def extract_ASG_vector(data):
     asg_vector = []
     for item in data:
         asg_vector.append(1 if (item['ASG']) else 0)
-        del item['ASG']
-    return asg_vector
+        del item['ASG'] #Extract vector of all stars and make sure we do not learn
+    return asg_vector   #from whether the player made the all star game that year
 
 def get_cleaned_data(data_file, asg_file):
     data = get_player_data(data_file)
@@ -67,6 +67,6 @@ def get_data(data_files):
         asg_file = item[1]
         this_features = get_cleaned_data(data_file, asg_file)
         features += this_features
-    random.shuffle(features)
-    labels = extract_ASG_vector(features)
+    random.shuffle(features) #Randomize order of data
+    labels = extract_ASG_vector(features) #Extract target labels from randomized data
     return features, labels
