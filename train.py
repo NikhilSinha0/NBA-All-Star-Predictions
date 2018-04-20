@@ -11,23 +11,23 @@ def load_data():
     vec = DictVectorizer()
     file_pairs = []
     for i in range(2014, 2019):
-        file_pairs.append([('data/players_' + str(i) + '.csv'), ('data/all_stars_' + str(i) + '.txt')])
-    var, labels = get_data(file_pairs)
+        file_pairs.append([('data/players_' + str(i) + '.csv'), ('data/all_stars_' + str(i) + '.txt'), i])
+    var, labels, names = get_data(file_pairs)
     vec = vec.fit_transform(var).toarray()
     labels = np.array(labels)
     vec = np.array(vec)
-    return vec, labels
+    return vec, labels, names
 
 def load_oversampled_data():
     vec = DictVectorizer()
     file_pairs = []
     for i in range(2014, 2019):
-        file_pairs.append([('data/players_' + str(i) + '.csv'), ('data/all_stars_' + str(i) + '.txt')])
-    var, labels = get_oversampled_data(file_pairs)
+        file_pairs.append([('data/players_' + str(i) + '.csv'), ('data/all_stars_' + str(i) + '.txt'), i])
+    var, labels, names = get_oversampled_data(file_pairs)
     vec = vec.fit_transform(var).toarray()
     labels = np.array(labels)
     vec = np.array(vec)
-    return vec, labels
+    return vec, labels, names
 
 def z_scorify(data):
     rectified_data = []
@@ -39,9 +39,10 @@ def z_scorify(data):
     return np.array(rectified_data).T
 
 def train_sklearn():
-    features, labels = load_data()
+    features, labels, names = load_data()
     num_samples = len(labels)
     classifier = ensemble.RandomForestClassifier()
+    names_test = names[9*(num_samples // 10):]
     print("Training started")
     start = timer()
     # Train on the first 90% of the data
@@ -52,16 +53,17 @@ def train_sklearn():
     # Now predict the last 10%:
     expected = labels[9*(num_samples // 10):]
     predicted = classifier.predict(features[9*(num_samples // 10):])
-    print_metrics(expected, predicted)
+    print_metrics(expected, predicted, names_test)
 
 def train_tf_keras():
-    features, labels = load_oversampled_data()
+    features, labels, names = load_oversampled_data()
     features = z_scorify(features)
     num_samples = len(labels)
     test_labels = labels[9*(num_samples // 10):]
     test_features = features[9*(num_samples // 10):]
     train_labels = labels[:9*(num_samples // 10)]
     train_features = features[:9*(num_samples // 10)]
+    names_test = names[9*(num_samples // 10):]
     batch_size = 512
     #Define model
     model = tf.keras.models.Sequential()
@@ -76,23 +78,23 @@ def train_tf_keras():
     print(this_metrics)
     print(model.predict(test_features))
     preds = np.array(model.predict(test_features) > 0.5)
-    print_metrics(test_labels, preds)
+    print_metrics(test_labels, preds, names_test)
 
 def train_tf():
-    features, labels = load_oversampled_data()
+    features, labels, names = load_oversampled_data()
     features = z_scorify(features)
     num_samples = len(labels)
     test_labels = labels[9*(num_samples // 10):]
     test_features = features[9*(num_samples // 10):]
     train_labels = labels[:9*(num_samples // 10)]
     train_features = features[:9*(num_samples // 10)]
+    names_test = names[9*(num_samples // 10):]
     batch_size = 512
     #Define model
     W = tf.Variable(tf.random_uniform([features.shape[1], 1], dtype=tf.float32))
     x = tf.placeholder(tf.float32, shape=(None, features.shape[1]))
-    m = tf.matmul(x, W)
     b = tf.Variable(tf.zeros([1]))
-    a = tf.add(m, b)
+    a = tf.add(tf.matmul(x, W), b)
     z = tf.sigmoid(a)
     predictions = tf.to_int32(z > 0.5)
     targets = tf.placeholder(tf.float32, shape=[None, 1])
@@ -105,8 +107,6 @@ def train_tf():
         for i in range(num_epochs):
             start = i*batch_size
             end = (i+1)*batch_size
-            l = sess.run(loss, feed_dict={x:train_features[start:end], targets: np.expand_dims(train_labels[start:end], -1)})
-            print(l)
             sess.run(train, feed_dict={x:train_features[start:end], targets: np.expand_dims(train_labels[start:end], -1)})
             if(num_epochs < 10 or i%10==0):
                 print('Iteration ' + str(i) + ': ')
@@ -114,19 +114,31 @@ def train_tf():
                 print(np.squeeze(values))
                 print_metrics(test_labels, np.squeeze(values))
         sess.run(train, feed_dict={x: train_features[num_epochs*batch_size:], targets: np.expand_dims(train_labels[num_epochs*batch_size:], -1)})
-        print('Final Iteration' + str(i) + ': ')
+        print('Final Iteration: ')
         values = sess.run(predictions, feed_dict={x: test_features})
         print(np.squeeze(values))
-        print_metrics(test_labels, np.squeeze(values))
+        print_metrics(test_labels, np.squeeze(values), names_test)
     sess.close()
 
-def print_metrics(expected, predicted):
+def print_metrics(expected, predicted, names=None):
     print("Classification report: \n%s\n"
         % (metrics.classification_report(expected, predicted)))
     print("Confusion matrix:\n%s" % metrics.confusion_matrix(expected, predicted))
     print("Log loss:\n%s" % metrics.log_loss(expected, predicted))
+    if(not names is None):
+        overrated = []
+        underrated = []
+        for i in range(len(expected)):
+            if(expected[i]<predicted[i]): #We predicted they would be all stars but they weren't
+                underrated.append(names[i])
+            elif(expected[i]>predicted[i]): #We predicted they wouldn't be all stars but they were
+                overrated.append(names[i])
+        print('Overrated:')
+        print(overrated)
+        print('Underrated:')
+        print(underrated)
 
 def main():
-    train_tf()
+    train_tf_keras()
 
 main()

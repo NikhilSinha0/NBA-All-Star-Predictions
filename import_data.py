@@ -39,20 +39,23 @@ def clean_data(data):
     data = [data[e] for e in range(len(data)) if e not in indices_to_delete]
     return data
 
-def append_allStar_data(fileName, data):
+def append_allStar_data(fileName, data, year):
     f=open(fileName, "r")
     contents = f.read()
     names = contents.split("\n")
     for item in data:
         item['ASG'] = (item['Player'] in names)
-        del item['Player'] #No longer need player names, do not want to learn from name
+        item['Player'] = item['Player'] + ' ' + str(year)
 
 def extract_ASG_vector(data):
     asg_vector = []
+    names_vector = []
     for item in data:
+        names_vector.append(item['Player'])
         asg_vector.append(1 if (item['ASG']) else 0)
-        del item['ASG'] #Extract vector of all stars and make sure we do not learn
-    return asg_vector   #from whether the player made the all star game that year
+        del item['Player'] #No longer need player names, do not want to learn from name
+        del item['ASG'] #Extract vector of all stars and make sure we do not learn from whether the player made the all star game that year
+    return asg_vector, names_vector
 
 def over_sample_data(data):
     all_stars = []
@@ -65,10 +68,10 @@ def over_sample_data(data):
         data.extend(copy.deepcopy(all_stars))
     return data
 
-def get_cleaned_data(data_file, asg_file):
+def get_cleaned_data(data_file, asg_file, year):
     data = get_player_data(data_file)
     data = clean_data(data)
-    append_allStar_data(asg_file, data)
+    append_allStar_data(asg_file, data, year)
     print("Import done")
     return data
 
@@ -77,20 +80,22 @@ def get_data(data_files):
     for item in data_files:
         data_file = item[0]
         asg_file = item[1]
-        this_features = get_cleaned_data(data_file, asg_file)
+        year = item[2]
+        this_features = get_cleaned_data(data_file, asg_file, year)
         features += this_features
     random.shuffle(features) #Randomize order of data
-    labels = extract_ASG_vector(features) #Extract target labels from randomized data
-    return features, labels
+    labels, names = extract_ASG_vector(features) #Extract target labels from randomized data
+    return features, labels, names
 
 def get_oversampled_data(data_files):
     features = []
     for item in data_files:
         data_file = item[0]
         asg_file = item[1]
-        this_features = get_cleaned_data(data_file, asg_file)
+        year = item[2]
+        this_features = get_cleaned_data(data_file, asg_file, year)
         features += this_features
     features = over_sample_data(features) #Oversample data
     random.shuffle(features) #Randomize order of data
-    labels = extract_ASG_vector(features) #Extract target labels from randomized data
-    return features, labels
+    labels, names = extract_ASG_vector(features) #Extract target labels from randomized data
+    return features, labels, names
