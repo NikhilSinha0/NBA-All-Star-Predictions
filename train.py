@@ -68,6 +68,7 @@ def train_tf_keras():
     #Define model
     model = tf.keras.models.Sequential()
     model.add(tf.keras.layers.Dense(64, activation='relu', input_dim=features.shape[1]))
+    model.add(tf.keras.layers.Dense(12, activation='relu'))
     model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
     sgd = tf.keras.optimizers.SGD(lr=0.01)
     model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
@@ -90,6 +91,7 @@ def train_tf():
     train_features = features[:9*(num_samples // 10)]
     names_test = names[9*(num_samples // 10):]
     batch_size = 512
+    num_epochs = 10
     #Define model
     W = tf.Variable(tf.random_uniform([features.shape[1], 1], dtype=tf.float32))
     x = tf.placeholder(tf.float32, shape=(None, features.shape[1]))
@@ -101,20 +103,21 @@ def train_tf():
     loss = tf.losses.log_loss(targets, z)
     train = tf.train.GradientDescentOptimizer(learning_rate=0.1).minimize(loss)
     init = tf.global_variables_initializer()
-    num_epochs = len(train_labels)//batch_size
+    num_complete_batches = len(train_labels)//batch_size
     with tf.Session() as sess:
         sess.run(init, feed_dict={x:train_features[0:batch_size]})
         for i in range(num_epochs):
-            start = i*batch_size
-            end = (i+1)*batch_size
-            sess.run(train, feed_dict={x:train_features[start:end], targets: np.expand_dims(train_labels[start:end], -1)})
-            if(num_epochs < 10 or i%10==0):
+            for i in range(num_complete_batches):
+                start = i*batch_size
+                end = (i+1)*batch_size
+                sess.run(train, feed_dict={x:train_features[start:end], targets: np.expand_dims(train_labels[start:end], -1)})    
+            sess.run(train, feed_dict={x: train_features[num_complete_batches*batch_size:], targets: np.expand_dims(train_labels[num_complete_batches*batch_size:], -1)})
+            if(num_epochs<10 or i%10==0):
                 print('Iteration ' + str(i) + ': ')
                 values = sess.run(predictions, feed_dict={x: test_features})
                 print(np.squeeze(values))
-                print_metrics(test_labels, np.squeeze(values))
-        sess.run(train, feed_dict={x: train_features[num_epochs*batch_size:], targets: np.expand_dims(train_labels[num_epochs*batch_size:], -1)})
-        print('Final Iteration: ')
+                print_metrics(test_labels, np.squeeze(values), names_test)
+        print('Training finished')
         values = sess.run(predictions, feed_dict={x: test_features})
         print(np.squeeze(values))
         print_metrics(test_labels, np.squeeze(values), names_test)
@@ -128,17 +131,22 @@ def print_metrics(expected, predicted, names=None):
     if(not names is None):
         overrated = []
         underrated = []
+        correct_positives = []
         for i in range(len(expected)):
             if(expected[i]<predicted[i]): #We predicted they would be all stars but they weren't
                 underrated.append(names[i])
             elif(expected[i]>predicted[i]): #We predicted they wouldn't be all stars but they were
                 overrated.append(names[i])
+            elif(expected[i]==1 and predicted[i]==1): #Correct All-Star predictions
+                correct_positives.append(names[i])
         print('Overrated:')
         print(overrated)
         print('Underrated:')
         print(underrated)
+        print('Correct All Stars')
+        print(correct_positives)
 
 def main():
-    train_tf_keras()
+    train_tf()
 
 main()
