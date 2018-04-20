@@ -1,5 +1,6 @@
 import csv
 import random
+import copy
 
 def get_player_data(fileName):
     data = []
@@ -53,6 +54,17 @@ def extract_ASG_vector(data):
         del item['ASG'] #Extract vector of all stars and make sure we do not learn
     return asg_vector   #from whether the player made the all star game that year
 
+def over_sample_data(data):
+    all_stars = []
+    for item in data:
+        if(item['ASG']):
+            all_stars.append(copy.deepcopy(item))
+    imbalance = len(data)//len(all_stars)
+    print(imbalance)
+    for i in range(imbalance):
+        data.extend(copy.deepcopy(all_stars))
+    return data
+
 def get_cleaned_data(data_file, asg_file):
     data = get_player_data(data_file)
     data = clean_data(data)
@@ -67,6 +79,18 @@ def get_data(data_files):
         asg_file = item[1]
         this_features = get_cleaned_data(data_file, asg_file)
         features += this_features
+    random.shuffle(features) #Randomize order of data
+    labels = extract_ASG_vector(features) #Extract target labels from randomized data
+    return features, labels
+
+def get_oversampled_data(data_files):
+    features = []
+    for item in data_files:
+        data_file = item[0]
+        asg_file = item[1]
+        this_features = get_cleaned_data(data_file, asg_file)
+        features += this_features
+    features = over_sample_data(features) #Oversample data
     random.shuffle(features) #Randomize order of data
     labels = extract_ASG_vector(features) #Extract target labels from randomized data
     return features, labels
